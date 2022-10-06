@@ -1,5 +1,6 @@
+import ase
 class AtomsCustom(ase.Atoms):
-        """"ase.Atoms object for implementation of custom methods"""
+    """"ase.Atoms object for implementation of custom methods"""
     def split_atom(self, atom_index: int, species: list, seperation = None, direction = None):
         """Split selected atom into two, returns new ase.Atoms object.
         

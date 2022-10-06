@@ -20,3 +20,9 @@ points are: 0, 0.33, 0.66, 1). This is reading from the .bands file.
 reads the fermi-energy with BandsFromCastep.get_fermi_level().
 
 Units = eV.
+
+
+ASE_extensions:
+
+AtomsCustom: custom atoms object to add methods. Currently implemented routine
+to split a selected atom into two (species are specified).
