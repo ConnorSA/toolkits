@@ -1,4 +1,5 @@
 import ase
+import numpy as np
 class AtomsCustom(ase.Atoms):
     """"ase.Atoms object for implementation of custom methods"""
     def split_atom(self, atom_index: int, species: list, seperation = None, direction = None):
@@ -28,4 +29,24 @@ class AtomsCustom(ase.Atoms):
         split_atoms=self.copy()
         split_atoms.pop(atom_index)
         split_atoms = split_atoms + ase.Atoms(species,positions=[x0,x1],cell=self.get_cell())
-        return split_atoms
+        return 
+        
+def one_interstitial_fcc(atoms : ase.atoms, sc : list):
+    """Return a list containing fcc crystal with 1 interstitial
+    atoms : ASE atoms object that is the FCC orthorhombic (conventional unit cell).
+    sc    : Size of the supercell, sc = [nx,ny,nz], where ni is the number of repeating unit cells.
+    """
+    interstitials=[]
+    sc = np.array(sc)
+    atoms_fcc_sc=atoms*sc
+    isolated_atom=atoms.copy()
+    for i in range(len(isolated_atom)-1):
+        isolated_atom.pop()
+    isolated_atom.set_cell(atoms_fcc_sc.cell)
+    octahedral_site=np.array([0.5,0.5,0.5])/sc
+    isolated_atom.set_scaled_positions([octahedral_site])
+    interstitials.append(atoms_fcc_sc+isolated_atom)
+    tetrahedral_site=np.array([0.25,0.25,0.25])/sc
+    isolated_atom.set_scaled_positions([tetrahedral_site])
+    interstitials.append(atoms_fcc_sc+isolated_atom)
+    return interstitials
