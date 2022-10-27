@@ -49,4 +49,6 @@ def one_interstitial_fcc(atoms : ase.atoms, sc : list):
     tetrahedral_site=np.array([0.25,0.25,0.25])/sc
     isolated_atom.set_scaled_positions([tetrahedral_site])
     interstitials.append(atoms_fcc_sc+isolated_atom)
+    print('0 = octahedral site')
+    print('1 = tetrahedal site')
     return interstitials
