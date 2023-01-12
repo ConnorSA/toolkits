@@ -1,0 +1,26 @@
+Notes:
+need a sym link in here to a compiled lammps.
+expected sym link name: lmp_mpiipcpc
+
+
+job_IP.sh is a slurm submit script with some example modules.
+
+
+Program depends on: numpy, ASE
+
+
+phase_diagram_via_isobars.py: is the driver program where things are controlled for a melt curve.
+In here an initial system is built up by reading in a geometry file (e.g. something.castep), and 
+then an orthorhombic sturcture is built.
+
+calculate_mu.py: contains the IP class which stores all info needed for a given interface pinning simulation.
+Also has the utilities called in the driver to run a given IP simulation.
+
+
+lammps_input_writer_EAM.py: lammps input file generator and contains the ReadLammps class that handles
+reading lammps thermo output to get averaged qauntities.
+
+
+
+crystal_driver.py: something to run a crystal NVT. (not really needed).
+
