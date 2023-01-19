@@ -1,5 +1,5 @@
 import numpy as np
-import io
+import io, os
 import ase, ase.io
 from ase.units import kB
 
@@ -238,21 +238,36 @@ class ReadLammps():
 
 
 class IPparams():
-    def __init__(self, location, pressure, temperature, step, hkl, thermostat, barostat, z_half, Nz, a, kappa, thinned, N, atoms):
-        self.location=location
+    def __init__(self, LAMMPS_RUN_COMMAND, atoms, toploc, pressure, temperature, step, hkl, 
+    thermostat, barostat, Nz, thinned=30, auto=False, kappa_prefactor=1,
+    step_prefactor=1, z_half=None, kappa=None, a=None):
+        if auto ==False and kappa==None and a==None:
+            print('ERROR: Warning, not using IP.auto, kappa and a need to be set!')
+            return
+        self.toploc = toploc
+        self.location=f'{toploc}/P_{str(pressure).zfill(6)}'
+        if not(os.path.exists(self.location)):
+            os.mkdir(self.location)
+            ase.io.write(f'{self.location}/data.hcp_Ti_crystal', atoms, format='lammps-data')
         self.pressure=pressure
         self.barostat=barostat
         self.temperature=temperature
         self.thermostat=thermostat
         self.step=step
         self.hkl=hkl
-        self.z_half=z_half
+        if z_half == None:
+            self.z_half=np.round(atoms.cell[2][2]/2, 1)
         self.Nz = Nz
         self.a=a
         self.kappa=kappa
         self.thinned=thinned
-        self.N = N
+        self.N = len(atoms)
         self.atoms = atoms
+        self.LAMMPS_RUN_COMMAND = LAMMPS_RUN_COMMAND
+        self.auto = auto
+        self.kappa_prefactor = kappa_prefactor
+        self.step_prefactor = step_prefactor
+        self.traj_name =  f"{toploc}/P_{str(pressure).zfill(6)}.iptraj"
         return
 
     def write_all(self):
@@ -280,8 +295,6 @@ class IPparams():
         IP_a=self.a, IP_kappa=self.kappa, thermostat=self.thermostat, barostat=self.barostat)
         return
 
-
-
     def update_IP(self, kappa_prefactor=1):
         crystal = ReadLammps(f'{self.location}/crystal_auto_EAM.out')
         liquid = ReadLammps(f'{self.location}/liquid_auto_EAM.out')
@@ -291,6 +304,35 @@ class IPparams():
         self.kappa = kappa_prefactor*kB*self.temperature*self.Nz**2/(q_crystal-q_liquid)**2
         return
 
+    def write_IP_params(self):
+        with open(f'{self.toploc}/params.txt' , "w") as f:
+            f.write('Paramters used: \n' +\
+            f'start pressure: {self.pressure}  \n ' +\
+            f'start temperature: {self.temperature}  \n' +\
+            f'number of steps: {self.step}  \n' +\
+            f'hkl: {self.hkl}  \n' +\
+            f'thermostat: {self.thermostat}  \n' +\
+            f'barostat: {self.barostat}  \n' +\
+            f'z_half: {self.z_half}  \n' +\
+            f'IP_a: {self.a}  \n' +\
+            f'IP_kappa: {self.kappa}  \n' +\
+            f'IP_kappa: {self.auto}  \n' +\
+            f'thinned: {self.thinned}  \n' +\
+            f'Number of atoms: {self.N}  \n' +\
+            f'Kappa prefactor: {self.kappa_prefactor}  \n' +\
+            f'Next T step prefactor: {self.step_prefactor}  \n'
+            )
+        return
+
+    def next_isobar_start(self, pressure, temperature):
+        self.location=f'{self.toploc}/P_{str(pressure).zfill(6)}'
+        self.pressure=pressure
+        if not(os.path.exists(self.location)):
+            os.mkdir(self.location)
+            ase.io.write(f'{self.location}/data.hcp_Ti_crystal', self.atoms, format='lammps-data')
+        self.traj_name =  f"{self.toploc}/P_{str(pressure).zfill(6)}.iptraj"
+        self.temperature = temperature
+        return
 
 
     
