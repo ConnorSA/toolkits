@@ -2,7 +2,6 @@ import numpy as np
 import io
 import ase, ase.io
 from ase.units import kB
-import re
 from lammps_input_writer_EAM import *
 import subprocess
 
@@ -50,13 +49,18 @@ def isobar_next_temp(current_P : float, current_T : float, crystal : ReadLammps,
     dmu_dT =(d_U + current_P*BAR_TO_EV*d_V -d_mu)/current_T #Note: d_mu needs to be here as d_U is looking at crystal and liquid (no biasing term)
     return  step_prefactor*d_mu/dmu_dT + current_T
 
+
+
+
 def classius_clapeyron_next_temp(current_T : float, dP : float, crystal : ReadLammps, liquid : ReadLammps, thinned=None):
     dV = (crystal.average_vol(thinned) - liquid.average_vol(thinned))
     dH = (crystal.average_enthalpy(thinned) - liquid.average_enthalpy(thinned))
     return current_T + current_T*dV*dP*BAR_TO_EV/dH
 
-def run_till_converged(IP : IPparams, tmeltout : str, melt_steps : int, tol=50, samples=10,
-                       kappa_prefactor=None, update_IP_params=False, step_prefactor=1):
+
+
+
+def run_till_converged(IP : IPparams, tmeltout : str, melt_steps : int, tol=50, samples=10):
     with open(tmeltout , "w") as f:
         f.write('T \t d_mu \t mean_Q \t mean_Qc \t mean_Ql \t std_Q \t std_Qc \t std_Ql \t IP_a \t IP_kappa \n')
     with open(tmeltout + '_energies', 'w') as f:
@@ -64,9 +68,8 @@ def run_till_converged(IP : IPparams, tmeltout : str, melt_steps : int, tol=50, 
 
     temperature_history=np.array([IP.temperature])
     for i in range(melt_steps):
-
         IP.write_crystal()
-        subprocess.run(f"srun ./lmp_mpiicpc < {IP.location}/in.crystal_auto_EAM > {IP.location}/crystal_auto_EAM.out", shell=True)
+        subprocess.run(f"{IP.LAMMPS_RUN_COMMAND} < {IP.location}/in.crystal_auto_EAM > {IP.location}/crystal_auto_EAM.out", shell=True)
         crystal = ReadLammps(f'{IP.location}/crystal_auto_EAM.out')
         atoms_crystal_end = ase.io.read(f'{IP.location}/data.crystal_end_EAM', format='lammps-data', style='atomic')
         Lx, Ly, Lz = crystal.average_lx(IP.thinned), crystal.average_ly(IP.thinned), crystal.average_lz(IP.thinned)
@@ -74,15 +77,15 @@ def run_till_converged(IP : IPparams, tmeltout : str, melt_steps : int, tol=50, 
         ase.io.write(f'{IP.location}/data.crystal_end_meaned', atoms_crystal_end, format='lammps-data')
 
         IP.write_liquid()
-        subprocess.run(f"srun ./lmp_mpiicpc < {IP.location}/in.setup_liquid_auto_EAM > {IP.location}/setup_liquid_auto_EAM.out", shell=True)
-        subprocess.run(f"srun ./lmp_mpiicpc < {IP.location}/in.liquid_auto_EAM > {IP.location}/liquid_auto_EAM.out", shell=True)
+        subprocess.run(f"{IP.LAMMPS_RUN_COMMAND} < {IP.location}/in.setup_liquid_auto_EAM > {IP.location}/setup_liquid_auto_EAM.out", shell=True)
+        subprocess.run(f"{IP.LAMMPS_RUN_COMMAND} < {IP.location}/in.liquid_auto_EAM > {IP.location}/liquid_auto_EAM.out", shell=True)
         liquid = ReadLammps(f'{IP.location}/liquid_auto_EAM.out')
 
-        if update_IP_params==True: IP.update_IP(kappa_prefactor=kappa_prefactor)
+        if IP.auto==True: IP.update_IP(kappa_prefactor=IP.kappa_prefactor)
 
         IP.write_coex()
-        subprocess.run(f"srun ./lmp_mpiicpc < {IP.location}/in.setup_pinning_auto_EAM > {IP.location}/setup_pinning_auto_EAM.out", shell=True)
-        subprocess.run(f"srun ./lmp_mpiicpc < {IP.location}/in.pinning_auto_EAM > {IP.location}/pinning_auto_EAM.out", shell=True)
+        subprocess.run(f"{IP.LAMMPS_RUN_COMMAND} < {IP.location}/in.setup_pinning_auto_EAM > {IP.location}/setup_pinning_auto_EAM.out", shell=True)
+        subprocess.run(f"{IP.LAMMPS_RUN_COMMAND} < {IP.location}/in.pinning_auto_EAM > {IP.location}/pinning_auto_EAM.out", shell=True)
         pinning = ReadLammps(f'{IP.location}/pinning_auto_EAM.out')
 
 #        d_mu = delta_mu(pinning, crystal, liquid, kappa=IP.kappa, a=IP.a, N=IP.N, thinned=IP.thinned)
@@ -91,7 +94,7 @@ def run_till_converged(IP : IPparams, tmeltout : str, melt_steps : int, tol=50, 
 
         dmu_dT, dmu_dT_std, pdv, pdv_std, d_mu, d_mu_std, d_U, d_U_std = energy_means_and_errors(IP.pressure, IP.temperature, pinning, crystal, liquid, kappa=IP.kappa, a=IP.a, N=IP.N, thinned=IP.thinned)
         new_T = isobar_next_temp(current_P=IP.pressure, current_T=IP.temperature, 
-                                 crystal=crystal, liquid=liquid, d_mu=d_mu, N=IP.N, thinned=IP.thinned, step_prefactor=step_prefactor)
+                                 crystal=crystal, liquid=liquid, d_mu=d_mu, N=IP.N, thinned=IP.thinned, step_prefactor=IP.step_prefactor)
         with open(tmeltout , "a") as f:
             f.write(str(IP.temperature) + '\t' + str(d_mu) + '\t' +\
                 '\t' + str(pinning.average_Q(IP.thinned)) + '\t' + str(crystal.average_Q(IP.thinned)) + '\t' + str(liquid.average_Q(IP.thinned)) + \
@@ -112,22 +115,6 @@ def run_till_converged(IP : IPparams, tmeltout : str, melt_steps : int, tol=50, 
     print(f'P = {IP.pressure}, end of melt steps, finished with std: {temperature_history[-samples:].std()} (K)', flush=True)
     return
 
-def initialse_IP_param(IP : IPparams):
-    IP.write_crystal()  
-    subprocess.run(f"./IP_lammps_initialise_crystal.sh {IP.location}", shell=True)  
-    crystal = ReadLammps(f'{IP.location}/crystal_auto_EAM.out')
-    atoms_crystal_end = ase.io.read(f'{IP.location}/data.crystal_end_EAM', format='lammps-data', style='atomic')
-    Lx, Ly, Lz = crystal.average_lx(IP.thinned), crystal.average_ly(IP.thinned), crystal.average_lz(IP.thinned)
-    atoms_crystal_end.set_cell([Lx, Ly, Lz], scale_atoms=True)
-    ase.io.write(f'{IP.location}/data.crystal_end_meaned', atoms_crystal_end, format='lammps-data')
-    IP.write_liquid()
-    subprocess.run(f"./IP_lammps_initialise_liquid.sh {IP.location}", shell=True)  
-    liquid = ReadLammps(f'{IP.location}/liquid_auto_EAM.out')
-    q_crystal = crystal.average_Q(thinned=IP.thinned)
-    q_liquid = liquid.average_Q(thinned=IP.thinned)
-    IP_a = q_liquid+ (q_crystal-q_liquid)/2
-    IP_kappa = kB*IP.temperature*IP.Nz**2/(q_crystal-q_liquid)**2
-    return IP_a, IP_kappa
 
 
     
