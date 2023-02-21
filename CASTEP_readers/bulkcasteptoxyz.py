@@ -18,7 +18,7 @@ for i, input_raw in enumerate(sys.argv[2:]):
 for i, a in enumerate(atoms):
     a.arrays[f'{force_name}'] = a.get_forces()
     a.info[f'{energy_name}'] = a.get_potential_energy(force_consistent=True)
-    a.info[f'{virial_name}'] = -a.get_stress(voigt=False)*a.get_volume()
+    a.info[f'{virial_name}'] = str(-a.get_stress(voigt=False)*a.get_volume()).replace('\n', '').replace('[', '').replace(']', '')
     a.info[f'config_type'] = f'{label}'
 
 Properties=f'species:S:1:pos:R:3:{force_name}:R:3'

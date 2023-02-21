@@ -29,7 +29,8 @@ class AtomsCustom(ase.Atoms):
         split_atoms=self.copy()
         split_atoms.pop(atom_index)
         split_atoms = split_atoms + ase.Atoms(species,positions=[x0,x1],cell=self.get_cell())
-        return 
+        self = split_atoms.copy()
+        return split_atoms
         
 def one_interstitial_fcc(atoms : ase.atoms, sc : list):
     """Return a list containing fcc crystal with 1 interstitial
