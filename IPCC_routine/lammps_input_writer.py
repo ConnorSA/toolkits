@@ -312,7 +312,7 @@ class IPparams():
             f'z_half: {self.z_half}  \n' +\
             f'IP_a: {self.a}  \n' +\
             f'IP_kappa: {self.kappa}  \n' +\
-            f'IP_kappa: {self.auto}  \n' +\
+            f'IP_auto: {self.auto}  \n' +\
             f'thinned: {self.thinned}  \n' +\
             f'Number of atoms: {self.N}  \n' +\
             f'Kappa prefactor: {self.kappa_prefactor}  \n' +\
