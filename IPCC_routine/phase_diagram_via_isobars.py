@@ -36,7 +36,7 @@ atoms.rattle(0.10)
 
 
 
-
+#initialise interface pinning parameters
 IP=IPparams(toploc=folder,
             potential=potential_str,
             pressure=10000,
@@ -60,8 +60,8 @@ run_till_converged(IP, IP.traj_name, melt_steps=10, tol=1, samples=5)
 #phase diagram via isobars
 pressures=[IP.pressure,20000,30000]
 for i, p in enumerate(pressures[1:]):
-    crystal_cc = ReadLammps(f'{IP.location}/crystal_auto_EAM.out')
-    liquid_cc = ReadLammps(f'{IP.location}/liquid_auto_EAM.out')
+    crystal_cc = ReadLammps(f'{IP.location}/crystal_auto.out')
+    liquid_cc = ReadLammps(f'{IP.location}/liquid_auto.out')
     next_temp=classius_clapeyron_next_temp(current_T=IP.temperature, dP=p-pressures[i], crystal=crystal_cc, liquid=liquid_cc, thinned=IP.thinned)
     IP.next_isobar_start(pressure=p, temperature=next_temp)
     run_till_converged(IP, IP.traj_name, melt_steps=10, tol=1, samples=5)
