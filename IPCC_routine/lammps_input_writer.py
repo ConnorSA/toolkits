@@ -20,10 +20,10 @@ def write_in_crystal(potential : str, location: str, pressure : float, temperatu
     f"fix bias all rhok {hkl[0]} {hkl[1]} {hkl[2]} 0.0 0.0  \n" \
     "thermo 50  \n" \
     "thermo_style custom step temp press density f_bias[3] vol etotal enthalpy lx ly lz\n" \
-    f"dump dumpXYZ all xyz 500 {location}/traj_crystal_EAM.xyz  \n" \
+    f"dump dumpXYZ all xyz 500 {location}/traj_crystal.xyz  \n" \
     f"run {step}  \n" \
-    f"write_data {location}/data.crystal_end_EAM  \n"
-    with open(f'{location}/in.crystal_auto_EAM' , "w") as f:
+    f"write_data {location}/data.crystal_end  \n"
+    with open(f'{location}/in.crystal_auto' , "w") as f:
         f.write(param_string)
     return 
     
@@ -46,10 +46,10 @@ def write_in_setup_pinning(potential : str, location: str, pressure : float, tem
     f"fix langevin left langevin 4000.0 {temperature} {thermostat} 2017  \n" \
     "thermo_style custom step temp pzz pe lz vol density etotal  \n" \
     "thermo 100  \n" \
-    f"#dump dumpXYZ all xyz 50 {location}/traj_setup_EAM.xyz  \n" \
+    f"#dump dumpXYZ all xyz 50 {location}/traj_setup.xyz  \n" \
     f"run {step}  \n" \
     f"write_data {location}/data.halfhalf  \n" 
-    with open(f'{location}/in.setup_pinning_auto_EAM' , "w") as f:
+    with open(f'{location}/in.setup_pinning_auto' , "w") as f:
         f.write(param_string)
     return param_string
 
@@ -72,9 +72,9 @@ IP_a=20.00, IP_kappa=4.0, barostat=1.00, thermostat=0.25):
     f"fix bias all rhok {hkl[0]} {hkl[1]} {hkl[2]}   {IP_kappa}   {IP_a} \n" \
     "thermo_style custom step temp pzz pe lz f_bias f_bias[1] f_bias[2] f_bias[3] vol etotal \n" \
     "thermo 50 \n" \
-    f"dump dumpXYZ all xyz 500 {location}/traj_pinning_EAM.xyz \n" \
+    f"dump dumpXYZ all xyz 500 {location}/traj_pinning.xyz \n" \
     f"run {step} \n" 
-    with open(f'{location}/in.pinning_auto_EAM' , "w") as f:
+    with open(f'{location}/in.pinning_auto' , "w") as f:
         f.write(param_string)
     return param_string
 
@@ -95,10 +95,10 @@ def write_in_setup_liquid(potential : str, location: str, pressure : float, temp
     f"fix bias all rhok {hkl[0]} {hkl[1]} {hkl[2]}  0.0 0.0 \n" \
     "thermo 50 \n" \
     "thermo_style custom step temp press density f_bias[3] vol etotal \n" \
-    "#dump dumpXYZ all xyz 500 traj_liquid_melting_EAM.xyz \n" \
+    "#dump dumpXYZ all xyz 500 traj_liquid_melting.xyz \n" \
     f"run {step} \n" \
-    f"write_data {location}/data.liquid_EAM \n"
-    with open(f'{location}/in.setup_liquid_auto_EAM' , "w") as f:
+    f"write_data {location}/data.liquid \n"
+    with open(f'{location}/in.setup_liquid_auto' , "w") as f:
         f.write(param_string)
     return param_string
 
@@ -108,7 +108,7 @@ def write_in_liquid(potential : str , location: str, pressure : float, temperatu
     "dimension	3  \n" \
     "boundary        p p p  \n" \
     "atom_style  atomic  \n" \
-    f"read_data     {location}/data.liquid_EAM  \n" \
+    f"read_data     {location}/data.liquid  \n" \
     "mass          1 48.0  \n" \
     f"{potential}" \
     "neighbor        0.3 bin \n" \
@@ -120,9 +120,9 @@ def write_in_liquid(potential : str , location: str, pressure : float, temperatu
     f"fix bias all rhok {hkl[0]} {hkl[1]} {hkl[2]}  0.0 0.0 \n" \
     "thermo_style custom step temp pzz pe lz f_bias f_bias[1] f_bias[2] f_bias[3] vol etotal enthalpy \n" \
     "thermo 50 \n" \
-    f"dump dumpXYZ all xyz 500 {location}/traj_liquid_EAM.xyz \n" \
+    f"dump dumpXYZ all xyz 500 {location}/traj_liquid.xyz \n" \
     f"run {step} \n" 
-    with open(f'{location}/in.liquid_auto_EAM' , "w") as f:
+    with open(f'{location}/in.liquid_auto' , "w") as f:
         f.write(param_string)
     return param_string
 
@@ -292,8 +292,8 @@ class IPparams():
         return
 
     def update_IP(self, kappa_prefactor=1):
-        crystal = ReadLammps(f'{self.location}/crystal_auto_EAM.out')
-        liquid = ReadLammps(f'{self.location}/liquid_auto_EAM.out')
+        crystal = ReadLammps(f'{self.location}/crystal_auto.out')
+        liquid = ReadLammps(f'{self.location}/liquid_auto.out')
         q_crystal = crystal.average_Q(thinned=self.thinned)
         q_liquid = liquid.average_Q(thinned=self.thinned)
         self.a = q_liquid+ (q_crystal-q_liquid)/2
