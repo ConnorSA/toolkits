@@ -3,16 +3,15 @@ import io, os
 import ase, ase.io
 from ase.units import kB
 
-def write_in_crystal(location: str, pressure : float, temperature : float, step = 10000, hkl=[6,6,0],
+def write_in_crystal(potential : str, location: str, pressure : float, temperature : float, step = 10000, hkl=[6,6,0],
     barostat=1.00, thermostat=0.25):
     param_string="units           metal \n" \
     "dimension	3  \n" \
     "boundary        p p p  \n" \
     "atom_style  atomic  \n" \
-    f"read_data     {location}/data.hcp_Ti_crystal  \n" \
+    f"read_data     {location}/data.crystal  \n" \
     "mass          1 48.0  \n" \
-    "pair_style eam/fs  \n" \
-    "pair_coeff * * Ti1.eam.fs Ti  \n" \
+    f"{potential}" \
     "neighbor        0.3 bin  \n" \
     "neigh_modify    delay 10  \n" \
     "timestep        0.002  \n" \
@@ -28,7 +27,7 @@ def write_in_crystal(location: str, pressure : float, temperature : float, step 
         f.write(param_string)
     return 
     
-def write_in_setup_pinning(location: str, pressure : float, temperature : float, step = 10000, hkl=[6,6,0], z_half=0, 
+def write_in_setup_pinning(potential : str, location: str, pressure : float, temperature : float, step = 10000, hkl=[6,6,0], z_half=0, 
     barostat=1.00, thermostat=0.25):
     param_string="units           metal \n" \
     "dimension	3  \n" \
@@ -36,8 +35,7 @@ def write_in_setup_pinning(location: str, pressure : float, temperature : float,
     "atom_style  atomic  \n" \
     f"read_data     {location}/data.crystal_end_meaned  \n" \
     "mass          1 48.0  \n" \
-    "pair_style eam/fs  \n" \
-    "pair_coeff * * Ti1.eam.fs Ti  \n" \
+    f"{potential} "\
     "neighbor        0.3 bin  \n" \
     "timestep        0.002  \n" \
     "run_style	verlet  \n" \
@@ -50,22 +48,21 @@ def write_in_setup_pinning(location: str, pressure : float, temperature : float,
     "thermo 100  \n" \
     f"#dump dumpXYZ all xyz 50 {location}/traj_setup_EAM.xyz  \n" \
     f"run {step}  \n" \
-    f"write_data {location}/data.halfhalf_EAM  \n" 
+    f"write_data {location}/data.halfhalf  \n" 
     with open(f'{location}/in.setup_pinning_auto_EAM' , "w") as f:
         f.write(param_string)
     return param_string
 
 
-def write_in_pinning(location: str, pressure : float, temperature : float, step = 10000, hkl=[6,6,0],
+def write_in_pinning(potential : str, location: str, pressure : float, temperature : float, step = 10000, hkl=[6,6,0],
 IP_a=20.00, IP_kappa=4.0, barostat=1.00, thermostat=0.25):
     param_string="units           metal \n" \
     "dimension	3  \n" \
     "boundary        p p p  \n" \
     "atom_style  atomic  \n" \
-    f"read_data     {location}/data.halfhalf_EAM  \n" \
+    f"read_data     {location}/data.halfhalf  \n" \
     "mass          1 48.0  \n" \
-    "pair_style eam/fs  \n" \
-    "pair_coeff * * Ti1.eam.fs Ti  \n" \
+    f"{potential}"\
     "neighbor        0.3 bin \n" \
     "timestep        0.002 \n" \
     "run_style	verlet \n" \
@@ -82,7 +79,7 @@ IP_a=20.00, IP_kappa=4.0, barostat=1.00, thermostat=0.25):
     return param_string
 
 
-def write_in_setup_liquid(location: str, pressure : float, temperature : float, step = 10000, hkl=[6,6,0],
+def write_in_setup_liquid(potential : str, location: str, pressure : float, temperature : float, step = 10000, hkl=[6,6,0],
     barostat=1.00, thermostat=0.25):
     param_string="units           metal \n" \
     "dimension	3  \n" \
@@ -90,8 +87,7 @@ def write_in_setup_liquid(location: str, pressure : float, temperature : float, 
     "atom_style  atomic  \n" \
     f"read_data     {location}/data.crystal_end_meaned  \n" \
     "mass          1 48.0  \n" \
-    "pair_style eam/fs  \n" \
-    "pair_coeff * * Ti1.eam.fs Ti  \n" \
+    f"{potential}"\
     "neighbor        0.3 bin \n" \
     "timestep        0.002 \n" \
     "run_style	verlet \n" \
@@ -106,7 +102,7 @@ def write_in_setup_liquid(location: str, pressure : float, temperature : float, 
         f.write(param_string)
     return param_string
 
-def write_in_liquid(location: str, pressure : float, temperature : float, step = 10000, hkl=[6,6,0],
+def write_in_liquid(potential : str , location: str, pressure : float, temperature : float, step = 10000, hkl=[6,6,0],
     barostat=1.00, thermostat=0.25):
     param_string="units           metal \n" \
     "dimension	3  \n" \
@@ -114,8 +110,7 @@ def write_in_liquid(location: str, pressure : float, temperature : float, step =
     "atom_style  atomic  \n" \
     f"read_data     {location}/data.liquid_EAM  \n" \
     "mass          1 48.0  \n" \
-    "pair_style eam/fs  \n" \
-    "pair_coeff * * Ti1.eam.fs Ti  \n" \
+    f"{potential}" \
     "neighbor        0.3 bin \n" \
     "timestep        0.002 \n" \
     "run_style	verlet \n" \
@@ -238,7 +233,7 @@ class ReadLammps():
 
 
 class IPparams():
-    def __init__(self, LAMMPS_RUN_COMMAND, atoms, toploc, pressure, temperature, step, hkl, 
+    def __init__(self, LAMMPS_RUN_COMMAND, atoms, toploc, potential ,pressure, temperature, step, hkl, 
     thermostat, barostat, Nz, thinned=30, auto=False, kappa_prefactor=1,
     step_prefactor=1, z_half=None, kappa=None, a=None):
         if auto ==False and kappa==None and a==None:
@@ -248,7 +243,8 @@ class IPparams():
         self.location=f'{toploc}/P_{str(pressure).zfill(6)}'
         if not(os.path.exists(self.location)):
             os.mkdir(self.location)
-            ase.io.write(f'{self.location}/data.hcp_Ti_crystal', atoms, format='lammps-data')
+            ase.io.write(f'{self.location}/data.crystal', atoms, format='lammps-data')
+        self.potential=potential
         self.pressure=pressure
         self.barostat=barostat
         self.temperature=temperature
@@ -277,21 +273,21 @@ class IPparams():
         return
     
     def write_crystal(self):
-        write_in_crystal(location=self.location, pressure=self.pressure, temperature=self.temperature, step=self.step,
+        write_in_crystal(potential=self.potential, location=self.location, pressure=self.pressure, temperature=self.temperature, step=self.step,
         hkl=self.hkl, thermostat=self.thermostat, barostat=self.barostat)
         return
 
     def write_liquid(self):
-        write_in_setup_liquid(location=self.location, pressure=self.pressure, temperature=self.temperature, step=self.step,
+        write_in_setup_liquid(potential=self.potential, location=self.location, pressure=self.pressure, temperature=self.temperature, step=self.step,
         hkl=self.hkl, thermostat=self.thermostat, barostat=self.barostat)
-        write_in_liquid(location=self.location, pressure=self.pressure, temperature=self.temperature, step=self.step, hkl=self.hkl,
+        write_in_liquid(potential=self.potential, location=self.location, pressure=self.pressure, temperature=self.temperature, step=self.step, hkl=self.hkl,
         thermostat=self.thermostat, barostat=self.barostat)
         return
     
     def write_coex(self):
-        write_in_setup_pinning(location=self.location, pressure=self.pressure, temperature=self.temperature, step=self.step,
+        write_in_setup_pinning(potential=self.potential, location=self.location, pressure=self.pressure, temperature=self.temperature, step=self.step,
         hkl=self.hkl, z_half=self.z_half, thermostat=self.thermostat, barostat=self.barostat)
-        write_in_pinning(location=self.location, pressure=self.pressure, temperature=self.temperature, step=self.step, hkl=self.hkl,
+        write_in_pinning(potential=self.potential, location=self.location, pressure=self.pressure, temperature=self.temperature, step=self.step, hkl=self.hkl,
         IP_a=self.a, IP_kappa=self.kappa, thermostat=self.thermostat, barostat=self.barostat)
         return
 
@@ -329,7 +325,7 @@ class IPparams():
         self.pressure=pressure
         if not(os.path.exists(self.location)):
             os.mkdir(self.location)
-            ase.io.write(f'{self.location}/data.hcp_Ti_crystal', self.atoms, format='lammps-data')
+            ase.io.write(f'{self.location}/data.crystal', self.atoms, format='lammps-data')
         self.traj_name =  f"{self.toploc}/P_{str(pressure).zfill(6)}.iptraj"
         self.temperature = temperature
         return

@@ -1,4 +1,4 @@
-from lammps_input_writer_EAM import *
+from lammps_input_writer import *
 from calculate_mu import *
 import ase, ase.io, ase.build
 import os
@@ -17,6 +17,10 @@ folder=f'test'
 if not(os.path.exists(folder)):
     os.mkdir(folder)
 
+#As defined in a LAMMPS input file: make sure to end each line with \n 
+potential_str=("pair_style eam/fs  \n" 
+               "pair_coeff * * Ti1.eam.fs Ti  \n")
+
 
 #building things
 topdir=os.getcwd()
@@ -31,7 +35,10 @@ atoms = atoms*sc
 atoms.rattle(0.10)
 
 
+
+
 IP=IPparams(toploc=folder,
+            potential=potential_str,
             pressure=10000,
             temperature=1500,
             step=25000,

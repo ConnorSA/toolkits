@@ -1,8 +1,7 @@
 import numpy as np
-import io
 import ase, ase.io
 from ase.units import kB
-from lammps_input_writer_EAM import *
+from lammps_input_writer import *
 import subprocess
 
 EV_TO_BAR = 1602176 #1ev/A^3 = 1602176 bar
@@ -69,24 +68,24 @@ def run_till_converged(IP : IPparams, tmeltout : str, melt_steps : int, tol=50, 
     temperature_history=np.array([IP.temperature])
     for i in range(melt_steps):
         IP.write_crystal()
-        subprocess.run(f"{IP.LAMMPS_RUN_COMMAND} < {IP.location}/in.crystal_auto_EAM > {IP.location}/crystal_auto_EAM.out", shell=True)
-        crystal = ReadLammps(f'{IP.location}/crystal_auto_EAM.out')
-        atoms_crystal_end = ase.io.read(f'{IP.location}/data.crystal_end_EAM', format='lammps-data', style='atomic')
+        subprocess.run(f"{IP.LAMMPS_RUN_COMMAND} < {IP.location}/in.crystal_auto > {IP.location}/crystal_auto.out", shell=True)
+        crystal = ReadLammps(f'{IP.location}/crystal_auto.out')
+        atoms_crystal_end = ase.io.read(f'{IP.location}/data.crystal_end', format='lammps-data', style='atomic')
         Lx, Ly, Lz = crystal.average_lx(IP.thinned), crystal.average_ly(IP.thinned), crystal.average_lz(IP.thinned)
         atoms_crystal_end.set_cell([Lx, Ly, Lz], scale_atoms=True)
         ase.io.write(f'{IP.location}/data.crystal_end_meaned', atoms_crystal_end, format='lammps-data')
 
         IP.write_liquid()
-        subprocess.run(f"{IP.LAMMPS_RUN_COMMAND} < {IP.location}/in.setup_liquid_auto_EAM > {IP.location}/setup_liquid_auto_EAM.out", shell=True)
-        subprocess.run(f"{IP.LAMMPS_RUN_COMMAND} < {IP.location}/in.liquid_auto_EAM > {IP.location}/liquid_auto_EAM.out", shell=True)
-        liquid = ReadLammps(f'{IP.location}/liquid_auto_EAM.out')
+        subprocess.run(f"{IP.LAMMPS_RUN_COMMAND} < {IP.location}/in.setup_liquid_auto > {IP.location}/setup_liquid_auto.out", shell=True)
+        subprocess.run(f"{IP.LAMMPS_RUN_COMMAND} < {IP.location}/in.liquid_auto > {IP.location}/liquid_auto.out", shell=True)
+        liquid = ReadLammps(f'{IP.location}/liquid_auto.out')
 
         if IP.auto==True: IP.update_IP(kappa_prefactor=IP.kappa_prefactor)
 
         IP.write_coex()
-        subprocess.run(f"{IP.LAMMPS_RUN_COMMAND} < {IP.location}/in.setup_pinning_auto_EAM > {IP.location}/setup_pinning_auto_EAM.out", shell=True)
-        subprocess.run(f"{IP.LAMMPS_RUN_COMMAND} < {IP.location}/in.pinning_auto_EAM > {IP.location}/pinning_auto_EAM.out", shell=True)
-        pinning = ReadLammps(f'{IP.location}/pinning_auto_EAM.out')
+        subprocess.run(f"{IP.LAMMPS_RUN_COMMAND} < {IP.location}/in.setup_pinning_auto > {IP.location}/setup_pinning_auto.out", shell=True)
+        subprocess.run(f"{IP.LAMMPS_RUN_COMMAND} < {IP.location}/in.pinning_auto > {IP.location}/pinning_auto.out", shell=True)
+        pinning = ReadLammps(f'{IP.location}/pinning_auto.out')
 
 #        d_mu = delta_mu(pinning, crystal, liquid, kappa=IP.kappa, a=IP.a, N=IP.N, thinned=IP.thinned)
 #        new_T = isobar_next_temp(current_P=IP.pressure, current_T=IP.temperature, 
