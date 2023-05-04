@@ -35,7 +35,7 @@ class AtomsToPhonons:
             a=ase.Atoms(symbols=s.get_chemical_symbols(), cell=s.get_cell(), 
                 scaled_positions=s.get_scaled_positions(), pbc=True)
             self.atoms.append(a)
-            a.set_calculator(potential)
+            a.calc = potential
             forces.append(a.get_forces())
         self.forces = forces
     def get_forces_castep(self):
@@ -86,7 +86,7 @@ class AtomsToPDOS:
             a=ase.Atoms(symbols=s.get_chemical_symbols(), cell=s.get_cell(), 
                 scaled_positions=s.get_scaled_positions(), pbc=True)
             self.atoms.append(a)
-            a.set_calculator(potential)
+            a.calc = potential
             forces.append(a.get_forces())
         self.forces = forces
     def get_forces_castep(self):
