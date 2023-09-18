@@ -6,6 +6,17 @@ import ase,ase.io
 
 from ase.units import kB
 
+def read_headered_data(file_in : str):
+    with open(file_in) as f:
+        lines=f.readlines()
+    labels=lines[0].split()
+    mydict={}
+    for i, val in enumerate(labels):
+        mydict[val] = []
+    for i, val in enumerate(lines[1:]):
+        for j, val2 in enumerate(labels):
+            mydict[val2].append(val.split()[j])
+    return mydict
 
 def write_params(TIP : lpi.ThermoIntParams, TS):
     with open(f'{TIP.toploc}/params.txt' , "w") as f:
@@ -41,34 +52,8 @@ def get_COM_correction(k, N, V, T):
     return kB*T*np.log((N/V)*(2*np.pi*kB*T/(N*k))**(3/2)  )
 
 
-# def get_W_irr(file, timestep, thermoprint):
-#     RL=lpi.ReadLammps(file,block=1)
-#     dlambda_ds = np.array(RL.dict['f_adiabat[2]'], dtype=float)
-#     dlambda_dt = dlambda_ds/timestep
-#     Hamiltonian = np.array(RL.dict['PotEng'], dtype=float) ##eV
-#     Lambda=np.array(RL.dict['f_adiabat[1]'], dtype=float) 
-#     dlambda_dt = (dlambda_dt[1:] + dlambda_dt[0:-1]) /2
-#     dHamiltonian = Hamiltonian[1:] - Hamiltonian[0:-1]
-#     dlambda=Lambda[1:] - Lambda[0:-1]
-#     tosum = dlambda_dt*dHamiltonian/dlambda
-#     W_irr_forward= np.ma.masked_invalid(tosum).sum()*timestep
-#     #W_irr_forward = sum(dlambda_dt*dHamiltonian/dlambda)*timestep
-#     RL=lpi.ReadLammps(file,block=3)
-#     dlambda_ds = np.array(RL.dict['f_adiabat[2]'], dtype=float)
-#     dlambda_dt = dlambda_ds/timestep
-#     Hamiltonian = np.array(RL.dict['PotEng'], dtype=float) ##eV
-#     Lambda=np.array(RL.dict['f_adiabat[1]'], dtype=float) 
-#     dlambda_dt = (dlambda_dt[1:] + dlambda_dt[0:-1]) /2
-#     dHamiltonian = Hamiltonian[1:] - Hamiltonian[0:-1]
-#     dlambda=Lambda[1:] - Lambda[0:-1]
-#     tosum = dlambda_dt*dHamiltonian/dlambda
-#     W_irr_backward= np.ma.masked_invalid(tosum).sum()*timestep
-#     #W_irr_backward = sum(dlambda_dt*dHamiltonian/dlambda)*timestep
-#     W_irr = 0.5*(W_irr_forward - W_irr_backward)
-#     return W_irr*thermoprint
 
-
-def get_W_irr3(file, thermoprint):
+def get_W_irr(file, thermoprint):
     RL=lpi.ReadLammps(file,block=1)
     Hamiltonian_potential = np.array(RL.dict['PotEng'], dtype=float) ##eV
     Hamiltonian_springs = -np.array(RL.dict['f_adiabat'], dtype=float) #sign correction for potential energy
@@ -84,63 +69,71 @@ def get_W_irr3(file, thermoprint):
     w = 0.5*(fw - bw)
     return w
 
+from scipy.integrate import cumtrapz
+def get_w_RS(filein):
+    ws=[]
+    RL= lpi.ReadLammps(filein, block=1)
+    flambda=np.array(RL.dict['v_lambda'], dtype=float)
+    RL2= lpi.ReadLammps(filein, block=3)
+    blambda=np.array(RL2.dict['v_lambda'], dtype=float)
+    fdx=np.array(RL.dict['PotEng'], dtype=float)/flambda ###omg this solved it
+    bdx=np.array(RL2.dict['PotEng'], dtype=float)/blambda
+    wf = cumtrapz(fdx, flambda,initial=0)
+    wb = cumtrapz(bdx[::-1], blambda[::-1],initial=0)
+    w = (wf + wb)/2
+    return w, flambda
 
 
-def get_free_energy(TIP: lpi.ThermoIntParams, logfilename='thermoint.log'):
+
+
+
+def get_free_energy(TIP: lpi.ThermoIntParams, fl_file='thermoint.fl'):
     ###set up and run setup.
     TIP.setup_crystal()
     subprocess.run(f"{TIP.LAMMPS_RUN_COMMAND} < {TIP.location}/in.setup_crystal > {TIP.location}/setup_crystal.out", shell=True)
     setup_crystal = lpi.ReadLammps(f'{TIP.location}/setup_crystal.out')
     ###average dimensions
-    atoms_crystal_end = ase.io.read(f'{TIP.location}/data.setup_crystal_end', format='lammps-data', style='atomic')
     Lx, Ly, Lz = setup_crystal.average_lx(TIP.averaging_setup), setup_crystal.average_ly(TIP.averaging_setup), setup_crystal.average_lz(TIP.averaging_setup)
     atomsforTI=TIP.atoms_unrattled #defaults to equilibrated otherwise.
     atomsforTI.set_cell([Lx, Ly, Lz], scale_atoms=True)
     ase.io.write(f'{TIP.location}/data.setup_crystal_end_meaned', atomsforTI, format='lammps-data')
-    # TIP.setup_getspring()
-    # subprocess.run(f"{TIP.LAMMPS_RUN_COMMAND} < {TIP.location}/in.get_spring > {TIP.location}/get_spring.out", shell=True)
-    # getspring_crystal = lpi.ReadLammps(f'{TIP.location}/get_spring.out')
-    ### setup Einstein crystal and run Thermo Int.
-    # msd = getspring_crystal.average_msd() ## \AA**2
     msd = setup_crystal.average_msd(averaging=TIP.averaging_setup) ## \AA**2
     spring_const= 3*kB*TIP.temperature/msd ## eV/ \AA**2
     TIP.setup_thermoint(spring_const)
     subprocess.run(f"{TIP.LAMMPS_RUN_COMMAND} < {TIP.location}/in.thermoint > {TIP.location}/thermoint.out", shell=True)
     thermoint_file=f"{TIP.location}/thermoint.out"
-    W_irr = get_W_irr3(thermoint_file, TIP.thermoprint_switch)
+    W_irr = get_W_irr(thermoint_file, TIP.thermoprint_switch)
     EC_ffe = get_EC_FFE(k=spring_const, m=TIP.mass, T=TIP.temperature, N=TIP.N)
     RL=lpi.ReadLammps(thermoint_file,block=0) #read first NVT of run.
     COM_correction = get_COM_correction(spring_const, TIP.N, RL.average_vol(TIP.averaging_setup), TIP.temperature)
     F0 = EC_ffe+ W_irr + COM_correction
     PV = BAR_TO_EV_PER_AA3*TIP.pressure*RL.average_vol(TIP.averaging)
     G0 = F0 + PV
-    if not(os.path.exists(logfilename)):
-        with open(logfilename , "w") as f:
+    if not(os.path.exists(fl_file)):
+        with open(fl_file , "w") as f:
             f.write(r'Pressure(NPT)  Pressure(NVT)  Temperature  G0/atom     F0/atom     W_irr/atom   spring   COM_correct/atom' +'\n')
-    with open(logfilename , "a") as f:
+    with open(fl_file , "a") as f:
         f.write(f"{TIP.pressure:13f}  {RL.average_pressure(TIP.averaging):13f}  {TIP.temperature:11f}  {G0/TIP.N:10f}  {F0/TIP.N:10f}  {W_irr/TIP.N:10f}   {spring_const:6f}   {COM_correction/TIP.N:14f}\n")
     return G0, F0, W_irr
 
 
 
-def get_RS_path(TIP: lpi.ThermoIntParams, finaltemp):
-    ###set up and run setup.
-    #TIP.setup_crystal()
-    #subprocess.run(f"{TIP.LAMMPS_RUN_COMMAND} < {TIP.location}/in.setup_crystal > {TIP.location}/setup_crystal.out", shell=True)
+def get_RS_path(TIP: lpi.ThermoIntParams, finaltemp, fl_file='thermoint.fl', rs_file='thermoint.rs'):
     setup_crystal = lpi.ReadLammps(f'{TIP.location}/setup_crystal.out')
-    ###average dimensions
-    #atoms_crystal_end = ase.io.read(f'{TIP.location}/data.setup_crystal_end', format='lammps-data', style='atomic')
-    #Lx, Ly, Lz = setup_crystal.average_lx(TIP.averaging_setup), setup_crystal.average_ly(TIP.averaging_setup), setup_crystal.average_lz(TIP.averaging_setup)
-    #atomsforTI=TIP.atoms_unrattled #defaults to equilibrated otherwise.
-    #atomsforTI.set_cell([Lx, Ly, Lz], scale_atoms=True)
-    #ase.io.write(f'{TIP.location}/data.setup_crystal_end_meaned', atomsforTI, format='lammps-data')
-    ### setup Einstein crystal and run Thermo Int.
     msd = setup_crystal.average_msd(averaging=TIP.averaging_setup) ## \AA**2
     spring_const= 3*kB*TIP.temperature/msd ## eV/ \AA**2
-    #spring_const=1
     lambdaf=TIP.temperature/finaltemp
     TIP.setup_RS(spring=spring_const, lambdaf=lambdaf)
     subprocess.run(f"{TIP.LAMMPS_RUN_COMMAND} < {TIP.location}/in.RS > {TIP.location}/RS.out", shell=True)
+    FL_path = read_headered_data(fl_file)
+    G0=np.array(FL_path['G0/atom'], dtype=float) #per atom
+    T0=TIP.temperature
+    N=TIP.N
+    w, Lambda_array=get_w_RS(f'{TIP.location}/RS.out')
+    G=G0/Lambda_array  + (1/Lambda_array)*w/N + 1.5*kB*T0*np.log(Lambda_array)/Lambda_array
+    T=T0/Lambda_array
+    A = np.array([T, G]).T
+    np.savetxt(rs_file, A, delimiter='\t', header=r"T   G0/atom", comments="")
     return
 
 

@@ -3,24 +3,6 @@ import io, os
 import ase, ase.io
 from ase.units import kB
 
-
-### Notes to self
-# Probably want to do the NPT side of simulations consistently. Authors used NPH + Langevin, and constrained COM.
-# I think this means that when they do the thermodynamic integration, it's not actually in NVT?
-
-###    f"fix ensemble all npt temp {temperature} {temperature} {thermostat} {isostring} {pressure} {pressure} {barostat} pchain 32  \n" \
-
-    # f"variable xcm equal xcm(all,x) \n"\
-    # f"variable ycm equal xcm(all,y) \n"\
-    # f"variable zcm equal xcm(all,z) \n"\
-    # f"fix f1 all nph aniso  {pressure} {pressure}  {barostat} fixedpoint" +r" ${xcm} ${ycm} ${zcm}" + "\n"\
-    # f"fix f2 all langevin {temperature} {temperature} {thermostat} 999 zero yes \n" \
-    # f"compute c1 all temp/com \n" \
-    # f"fix_modify f1 temp c1 \n" \
-    # f"fix_modify f2 temp c1 \n" \
-
-    # f"fix ensemble all npt temp {temperature} {temperature} {thermostat} {isostring} {pressure} {pressure} {barostat} pchain 32  \n" \
-
 def write_setup_crytal(pair_style : str, pair_coeff : str, location: str, mass : float, pressure : float, temperature : float, timestep : float ,nstep = 10000,
     barostat=1.00, thermostat=0.25, aniso=True, thermoprint=50):
     isostring='aniso'
@@ -93,25 +75,6 @@ def write_getspring(pair_style : str, pair_coeff : str, location: str, mass : fl
         f.write(param_string) 
     return
 
-
-### COM adjust NPT
-    # f"velocity all create  {temperature} 1 mom yes rot yes \n" \
-    # f"variable xcm equal xcm(all,x) \n"\
-    # f"variable ycm equal xcm(all,y) \n"\
-    # f"variable zcm equal xcm(all,z) \n"\
-    # f"fix f1 all nph aniso  {pressure} {pressure}  {barostat} fixedpoint" +r" ${xcm} ${ycm} ${zcm}" + "\n"\
-    # f"fix f2 all langevin {temperature} {temperature} {thermostat} 999 zero yes \n" \
-    # f"compute c1 all temp/com \n" \
-    # f"fix_modify f1 temp c1 \n" \
-    # f"fix_modify f2 temp c1 \n" \
-
-    # f"variable xcm equal xcm(all,x) \n"\
-    # f"variable ycm equal xcm(all,y) \n"\
-    # f"variable zcm equal xcm(all,z) \n"\
-#    f"fix f1 all nvt temp {temperature} {temperature} {thermostat} fixedpoint" +r" ${xcm} ${ycm} ${zcm}" + "\n"\
-    # f"velocity all create  {temperature} 1 mom yes rot yes \n" \
-    # f"compute c1 all temp/com \n" \
-    # f"fix_modify f1 temp c1 \n" \
 def write_thermoint(pair_style : str, pair_coeff : str, location: str, mass : float, temperature : float, pressure : float, timestep : float, spring ,nstep = 10000, nstep_eq=10000,
     barostat=1.00, thermostat=0.25, aniso=True, thermoprint=50):
     isostring='aniso'
@@ -146,45 +109,9 @@ def write_thermoint(pair_style : str, pair_coeff : str, location: str, mass : fl
         f.write(param_string) 
     return
 
-def write_thermoint2(pair_style : str, pair_coeff : str, location: str, temperature : float, pressure : float,mass : float, timestep : float, spring ,nstep = 10000, nstep_eq=10000,
-    barostat=1.00, thermostat=0.25, aniso=True, thermoprint=50):
-    isostring='aniso'
-    if aniso==False:
-        isostring='iso'
-    param_string="units           metal \n" \
-    "dimension	3  \n" \
-    "boundary        p p p  \n" \
-    "atom_style  atomic  \n" \
-    f"read_data     {location}/data.setup_crystal_end_meaned  \n" \
-    f"mass          1 {mass}  \n" \
-    f"pair_style  {pair_style} \n" \
-    f"pair_coeff  {pair_coeff} \n" \
-    "neighbor        0.3 bin  \n" \
-    "neigh_modify    delay 10  \n" \
-    f"timestep        {timestep}  \n" \
-    "run_style	verlet  \n" \
-    f"fix adiabat all ti/spring {spring} {nstep} {nstep_eq} \n" \
-    f"fix f1 all nvt temp {temperature} {temperature} {thermostat} \n"\
-    f"velocity all create  {temperature} 1 mom yes rot yes dist gaussian \n" \
-    f"compute c1 all temp/com \n" \
-    f"thermo {thermoprint}  \n" \
-    f"thermo_style custom step temp press f_adiabat f_adiabat[1] f_adiabat[2] vol etotal pe enthalpy lx ly lz density c_c1 \n"\
-    r"#thermo_modify format f_adiabat[2] %.8f "+ "\n"\
-    f"dump dumpXYZ all xyz 100 {location}/traj_thermoint.xyz  \n" \
-    f"run {nstep_eq} \n" \
-    f"run {nstep} \n" \
-    f"run {nstep_eq} \n" \
-    f"run {nstep} \n" 
-    with open(f'{location}/in.thermoint' , "w") as f:
-        f.write(param_string) 
-    return
-
-### Maybe don't need spring at all?
-#    f"fix adiabat all ti/spring {spring} {nstep} {nstep_eq} \n" \
-
-
 #    f"fix f1 all nph aniso  {pressure} {pressure}  {barostat} fixedpoint" +r" ${xcm} ${ycm} ${zcm}" + "\n"\
-#    f"fix f2 all langevin {temperature} {temperature} {thermostat} 999 zero yes \n" \
+#    f"fix f2 all langevin {temperature} {temperature} {thermostat} 999 zero yes \n"\
+
 
 
 def write_RS(pair_style : str, pair_coeff : str, location: str, mass : float, temperature : float, pressure : float,
@@ -210,15 +137,13 @@ def write_RS(pair_style : str, pair_coeff : str, location: str, mass : float, te
     f"variable xcm equal xcm(all,x) \n"\
     f"variable ycm equal xcm(all,y) \n"\
     f"variable zcm equal xcm(all,z) \n"\
-    f"fix f2 all langevin {temperature} {temperature} {thermostat} 999 zero yes \n"\
-    f"fix f1 all nph aniso  {pressure} {pressure}  {barostat} fixedpoint" +r" ${xcm} ${ycm} ${zcm}" + "\n"\
+    f"fix f1 all npt temp {temperature} {temperature} {thermostat} {isostring} {pressure} {pressure} {barostat} pchain 32  \n" \
     f"compute c1 all temp/com \n" \
     f"fix_modify f1 temp c1 \n" \
-    f"fix_modify f2 temp c1 \n" \
+    f"#fix_modify f2 temp c1 \n" \
     f"velocity all create  {temperature} 1 mom yes rot yes \n" \
     f"thermo 10  \n" \
     f"thermo_style custom step temp press v_lambda vol etotal pe enthalpy lx ly lz density c_c1 \n"\
-    r"#thermo_modify format f_adiabat[2] %.8f "+ "\n"\
     f"dump dumpXYZ all xyz 100 {location}/traj_RS.xyz  \n" \
     f"run {nstep_eq} \n" \
     f"variable lambda equal 1/(1+elapsed/{nstep}*(1/{lambdaf}-1)) \n"\
@@ -270,7 +195,7 @@ class ThermoIntParams():
         self.LAMMPS_RUN_COMMAND = LAMMPS_RUN_COMMAND
         self.traj_name =  f"{toploc}/P_{str(pressure).zfill(6)}.iptraj"
         self.thermoprint=thermoprint
-        self.thermoprint_switch=10 #this needs to be very small for converged integration
+        self.thermoprint_switch=10
         return
 
 
