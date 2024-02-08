@@ -1,0 +1,11 @@
+primitive_cell: 'data.Ti_bcc_ortho'
+name: BCC
+supercell: [17,17,17]
+start_temp: 1200
+final_temp: 1350
+pressure: 120000
+iso: True
+
+
+
+

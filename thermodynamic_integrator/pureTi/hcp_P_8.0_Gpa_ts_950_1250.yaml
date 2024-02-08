@@ -1,0 +1,11 @@
+primitive_cell: 'data.Ti_hcp_ortho'
+name: HCP
+supercell: [19,11,12]
+start_temp: 950
+final_temp: 1250
+pressure: 80000
+iso: False
+
+
+
+
