@@ -1,0 +1,4 @@
+# User specific aliases and functions
+LS_COLORS='*.castep=1;37:*.param=0;37:*.cell=0;37:*.sh=1;33:*.py=1;35:*.ipynb=1;33:*.yaml=0;33:*.xyz=0;31:*.in=0;32:'
+
+alias squeueme="squeue --format=\"%.18i %.9P %.52j %.8u %.8T %.10M %.9l %.6D %R\" --me"
